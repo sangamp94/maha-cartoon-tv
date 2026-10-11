@@ -54,3 +54,13 @@ button{touch-action:manipulation}
 @media(min-width:701px) and (max-width:1024px){
   .player-shell{min-height:0;aspect-ratio:16/9}
 }
+
+
+/* Live viewer counter */
+.live-status-group{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+.viewer-badge{display:flex;align-items:center;gap:7px;border:1px solid #ffffff19;background:#ffffff08;border-radius:9px;padding:10px 12px;color:#c8b4c5;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.04em;white-space:nowrap}
+.viewer-badge strong{color:#fff;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+.viewer-pulse{width:7px;height:7px;border-radius:50%;background:#9b8798;flex-shrink:0}
+.viewer-badge.viewer-ready .viewer-pulse{background:#5cdda2;box-shadow:0 0 10px #5cdda277;animation:livePulse 2s infinite}
+@media(max-width:700px){.live-status-group{gap:6px}.viewer-badge{padding:8px 9px;font-size:8px}.live-badge{padding:8px 9px}}
+@media(max-width:380px){.live-status-group{gap:5px}.viewer-badge{gap:5px;padding:8px 7px;font-size:7px}}
