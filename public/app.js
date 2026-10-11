@@ -4,6 +4,36 @@ const video=$("#liveVideo"), shell=$("#playerShell"), overlay=$("#playerOverlay"
 const center=$("#centerPlay"), play=$("#playButton"), mute=$("#muteButton"), full=$("#fullscreenButton"), status=$("#playerStatus"), signal=$("#signalStatus"), dot=$("#signalDot");
 const sound=$("#soundToggle"), soundIcon=$("#soundIcon"), soundLabel=$("#soundLabel"), menu=$("#footerMenu"), popover=$("#footerPopover");
 let hls=null, muted=true;
+const viewerCount=$("#viewerCount"), viewerLabel=$("#viewerLabel");
+let viewerTimer=null;
+function getViewerId(){
+ try{
+  let id=localStorage.getItem("maha-cartoon-tv-viewer-id");
+  if(!id){id=window.crypto&&crypto.randomUUID?crypto.randomUUID():"v-"+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("maha-cartoon-tv-viewer-id",id);}
+  return id;
+ }catch{return "v-"+Math.random().toString(36).slice(2)+Date.now().toString(36);}
+}
+async function refreshViewerCount(){
+ if(document.visibilityState==="hidden")return;
+ try{
+  const response=await fetch("/api/presence?id="+encodeURIComponent(getViewerId()),{method:"POST",cache:"no-store",headers:{"Accept":"application/json"}});
+  const data=await response.json();
+  if(!response.ok||!data.configured)throw new Error("Presence service not configured");
+  if(viewerCount)viewerCount.textContent=String(data.count);
+  if(viewerLabel)viewerLabel.textContent=data.count===1?"watching":"watching";
+  const badge=document.querySelector(".viewer-badge");if(badge)badge.classList.add("viewer-ready");
+ }catch{
+  if(viewerCount)viewerCount.textContent="—";
+  if(viewerLabel)viewerLabel.textContent="viewers";
+  const badge=document.querySelector(".viewer-badge");if(badge)badge.classList.remove("viewer-ready");
+ }
+}
+function startViewerCounter(){
+ refreshViewerCount();
+ viewerTimer=window.setInterval(refreshViewerCount,25000);
+ document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refreshViewerCount();});
+ window.addEventListener("pagehide",()=>{if(viewerTimer)window.clearInterval(viewerTimer);});
+}
 function showState(state, text) {
   if(state==="live"){overlay.hidden=true;center.hidden=!video.paused;status.textContent="Live broadcast";signal.textContent="Connected";dot.classList.remove("signal-error");return;}
   overlay.hidden=false;center.hidden=true;
@@ -30,5 +60,5 @@ play.addEventListener("click",togglePlay);center.addEventListener("click",toggle
 mute.addEventListener("click",()=>{muted=!muted;muteUI();});sound.addEventListener("click",()=>{muted=!muted;muteUI();});
 full.addEventListener("click",async()=>{try{if(!document.fullscreenElement)await shell.requestFullscreen();else await document.exitFullscreen();}catch{message.textContent="Fullscreen is not available in this browser."; }});
 retry.addEventListener("click",start);menu.addEventListener("click",()=>{const open=menu.getAttribute("aria-expanded")==="true";menu.setAttribute("aria-expanded",String(!open));menu.querySelector("span").textContent=open?"+":"−";popover.hidden=open;});
-muteUI();start();
+muteUI();start();startViewerCounter();
 })();
