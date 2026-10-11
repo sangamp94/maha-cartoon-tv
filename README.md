@@ -19,6 +19,15 @@ Create a Node Web Service on your preferred host (Render works):
 
 Check `/api/health` after deploying.
 
+## Live viewers counter (optional setup)
+
+The site can show a real-time online-browser count across devices using Upstash Redis (shared storage; not an in-memory counter). Create a free Redis database at https://console.upstash.com, then add these environment variables in Vercel Project Settings → Environment Variables:
+
+- `UPSTASH_REDIS_REST_URL`: the database's HTTPS REST URL
+- `UPSTASH_REDIS_REST_TOKEN`: the database's REST token (keep it server-side; never add it to frontend files)
+
+Add both to Production and redeploy. The counter heartbeats every 25 seconds and expires inactive visitors after 75 seconds. It counts browser identities, not verified individual people; shared browsers may count as one viewer. Until both variables are configured, the UI displays a dash rather than a fabricated number.
+
 ## Includes
 - Premium dark red/pink responsive UI
 - HLS.js/native HLS player, playback/mute/fullscreen/retry controls
