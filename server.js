@@ -78,6 +78,38 @@ function rewriteManifest(text, req, manifestUrl) {
 }
 
 app.get("/api/health", (_req, res) => res.set("Cache-Control", "no-store").json({ ok: true }));
+app.post("/api/presence", async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  if (!originAllowed(req)) return res.status(403).json({ configured: false, error: "Forbidden" });
+  const redisUrl = (process.env.UPSTASH_REDIS_REST_URL || "").trim().replace(/\/+$/, "");
+  const redisToken = (process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
+  if (!redisUrl || !redisToken) return res.status(503).json({ configured: false, error: "Presence storage is not configured." });
+  const visitorId = String(req.query.id || "");
+  if (!/^[a-zA-Z0-9_-]{8,100}$/.test(visitorId)) return res.status(400).json({ configured: true, error: "Invalid visitor id." });
+  const now = Date.now();
+  const cutoff = now - 75_000;
+  async function redis(command) {
+    const response = await fetch(redisUrl, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${redisToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(command),
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) throw new Error("Presence storage request failed.");
+    const payload = await response.json();
+    if (payload.error) throw new Error("Presence storage command failed.");
+    return payload.result;
+  }
+  try {
+    await redis(["ZREMRANGEBYSCORE", "maha:live-presence", "-inf", cutoff]);
+    await redis(["ZADD", "maha:live-presence", now, visitorId]);
+    const count = Number(await redis(["ZCARD", "maha:live-presence"]));
+    return res.json({ configured: true, count: Number.isFinite(count) ? count : 0, updatedAt: now });
+  } catch (error) {
+    console.error("Live viewer counter error:", error.message);
+    return res.status(503).json({ configured: false, error: "Live viewer count temporarily unavailable." });
+  }
+});
 app.all("/api/live", async (req, res) => {
   if (!["GET", "HEAD"].includes(req.method)) return res.status(405).set("Allow", "GET, HEAD").end();
   if (!originAllowed(req)) return res.status(403).send("Forbidden");
